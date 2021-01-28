@@ -1,6 +1,7 @@
-
+import os
 from torch import tensor
 import torchvision
+from PIL import Image 
 from torch.utils.data import Dataset
 
 class LeafData(Dataset):
@@ -12,6 +13,6 @@ class LeafData(Dataset):
     
     def __getitem__(self, item):
         img_id, label, _ = self.df.loc[item]
-        img_path = os.path.join(dir, img_id)
+        img_path = os.path.join(self.dir, img_id)
         image = Image.open(img_path).resize((256,256))
         return {'image': torchvision.transforms.ToTensor()(image), 'label':tensor(label)}

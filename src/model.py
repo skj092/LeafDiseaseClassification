@@ -1,4 +1,3 @@
-# !pip install pretrainedmodels -q 
 import pretrainedmodels
 import torch.nn as nn
 
