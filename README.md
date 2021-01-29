@@ -6,8 +6,8 @@ cassava is a key food security crop grown by smallholder farmers because it can 
 
 **Solution**
 
-|model|accuracy|validation loss|
-|:------|:-------:|-------:|
-|resnet18|71%|1.63|
+|model|accuracy|validation loss|epochs|lr|
+|:------|:-------:|:-------:|:---:|:----:|
+|resnet18|71%|1.63|5|1e-3|
 
 

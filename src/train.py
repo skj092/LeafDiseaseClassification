@@ -2,12 +2,12 @@ import torch
 import dataset
 import engine
 import pandas as pd 
-from model import get_model 
+from model import get_model, LeafModel
 from torch.utils.data import DataLoader
  
 def train(fold):
 
-    bs = 64
+    bs = 16
     epochs = 5
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     df = pd.read_csv('input/train_fold.csv')
@@ -21,14 +21,22 @@ def train(fold):
     train_dl = torch.utils.data.DataLoader(train_ds, bs)
     valid_dl = torch.utils.data.DataLoader(valid_ds, bs)
 
-    model = get_model(pretrained=True)
+    # model = get_model(pretrained=True)
+    model = LeafModel(df.label.nunique())
     model.to(device)
 
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+    # Scheduler
+    scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer, step_size=5, gamma=0.1
+    )
 
     for epoch in range(epochs):
-        engine.Train(train_ds, train_dl, model, optimizer, device)
-        engine.Evaluate(valid_ds, valid_dl, model, optimizer, device)
+        train_loss = engine.Train(train_ds, train_dl, model, optimizer, device)
+        valid_loss, valid_acc = engine.Evaluate(valid_ds, valid_dl, model, optimizer, device)
+        scheduler.step()
+        print(f'fold = {fold}, epoch={epoch}, train loss = {train_loss}\
+        valid_loss = {valid_loss}, accuracy={valid_acc}')
 
 if __name__ == "__main__":
     train(0)
