@@ -4,11 +4,9 @@ import torch.nn as nn
 # Resnet
 def get_model(pretrained):
     if pretrained:
-        model = pretrainedmodels.__dict__['resnet34'](
-            pretrained='imagenet')
+        model = pretrainedmodels.__dict__["resnet34"](pretrained="imagenet")
     else:
-        model = pretrainedmodels.__dict__['resnet34'](
-            pretrained=None)
+        model = pretrainedmodels.__dict__["resnet34"](pretrained=None)
     model.last_linear = nn.Sequential(
         nn.BatchNorm1d(512),
         nn.Dropout(p=0.25),
@@ -17,11 +15,15 @@ def get_model(pretrained):
         nn.BatchNorm1d(1024, eps=1e-5, momentum=0.1),
         nn.Dropout(p=0.5),
         nn.Linear(in_features=1024, out_features=5),
-        nn.Sigmoid())
+        nn.Sigmoid(),
+    )
     return model
+
 
 # Efficientnet
 from efficientnet_pytorch import EfficientNet
+
+
 class LeafModel(nn.Module):
     def __init__(self, num_classes):
         super().__init__()

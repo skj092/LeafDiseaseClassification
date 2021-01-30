@@ -1,22 +1,23 @@
-import torch 
+import torch
 import dataset
 import engine
-import pandas as pd 
+import pandas as pd
 from model import get_model, LeafModel
 from torch.utils.data import DataLoader
- 
+
+
 def train(fold):
 
     bs = 16
     epochs = 5
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    df = pd.read_csv('input/train_fold.csv')
+    df = pd.read_csv("input/train_fold.csv")
 
     train_df = df[df.kfold != fold].reset_index(drop=True)
     valid_df = df[df.kfold == fold].reset_index(drop=True)
 
-    train_ds = dataset.LeafData(train_df, dir='input/train_images/')
-    valid_ds = dataset.LeafData(valid_df, dir='input/train_images')
+    train_ds = dataset.LeafData(train_df, dir="input/train_images/")
+    valid_ds = dataset.LeafData(valid_df, dir="input/train_images")
 
     train_dl = torch.utils.data.DataLoader(train_ds, bs)
     valid_dl = torch.utils.data.DataLoader(valid_ds, bs)
@@ -27,16 +28,19 @@ def train(fold):
 
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
     # Scheduler
-    scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=5, gamma=0.1
-    )
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
 
     for epoch in range(epochs):
         train_loss = engine.Train(train_ds, train_dl, model, optimizer, device)
-        valid_loss, valid_acc = engine.Evaluate(valid_ds, valid_dl, model, optimizer, device)
+        valid_loss, valid_acc = engine.Evaluate(
+            valid_ds, valid_dl, model, optimizer, device
+        )
         scheduler.step()
-        print(f'fold = {fold}, epoch={epoch}, train loss = {train_loss}\
-        valid_loss = {valid_loss}, accuracy={valid_acc}')
+        print(
+            f"fold = {fold}, epoch={epoch}, train loss = {train_loss}\
+        valid_loss = {valid_loss}, accuracy={valid_acc}"
+        )
+
 
 if __name__ == "__main__":
     train(0)
