@@ -6,10 +6,10 @@ from model import get_model, LeafModel
 from torch.utils.data import DataLoader
 
 
-def train(fold):
+def run(fold):
 
-    bs = 16
-    epochs = 5
+    bs = 64
+    epochs = 8
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     df = pd.read_csv("input/train_fold.csv")
 
@@ -22,14 +22,15 @@ def train(fold):
     train_dl = torch.utils.data.DataLoader(train_ds, bs)
     valid_dl = torch.utils.data.DataLoader(valid_ds, bs)
 
-    # model = get_model(pretrained=True)
-    model = LeafModel(df.label.nunique())
+    model = get_model()
+    # model = LeafModel(df.label.nunique())
     model.to(device)
 
-    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.SGD(model.parameters(), lr=3e-3)
     # Scheduler
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=0.7, gamma=0.5)
 
+    best_accuracy = 0
     for epoch in range(epochs):
         train_loss = engine.Train(train_ds, train_dl, model, optimizer, device)
         valid_loss, valid_acc = engine.Evaluate(
@@ -40,7 +41,10 @@ def train(fold):
             f"fold = {fold}, epoch={epoch}, train loss = {train_loss}\
         valid_loss = {valid_loss}, accuracy={valid_acc}"
         )
+        if valid_acc > best_accuracy:
+            torch.save(model.state_dict(), "models/model.pt")
+            best_accuracy = valid_acc
 
 
 if __name__ == "__main__":
-    train(0)
+    run(0)
