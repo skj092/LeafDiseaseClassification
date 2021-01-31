@@ -3,6 +3,7 @@ from sklearn import metrics
 from tqdm import tqdm
 import torch
 import torch.nn as nn
+import numpy as np 
 
 
 def Train(dataset, dataloader, model, optimizer, device):
@@ -48,9 +49,10 @@ def Evaluate(dataset, dataloader, model, optimizer, device):
     return val_loss / num_batches, val_acc / num_batches
 
 
-def Predict(dataloader, model, optimizer, device):
+def Predict(dataset, dataloader, model, device):
     model.eval()
     predictions = []
+    num_batches = int(len(dataset) / dataloader.batch_size)
     tk0 = tqdm(dataloader, total=num_batches)
     with torch.no_grad():
         for step, batch in enumerate(tk0):

@@ -1,23 +1,31 @@
 import pretrainedmodels
 import torch.nn as nn
-
+import torchvision 
+import torch.nn.functional as F 
 # Resnet
-def get_model(pretrained):
-    if pretrained:
-        model = pretrainedmodels.__dict__["resnet34"](pretrained="imagenet")
-    else:
-        model = pretrainedmodels.__dict__["resnet34"](pretrained=None)
-    model.last_linear = nn.Sequential(
-        nn.BatchNorm1d(512),
-        nn.Dropout(p=0.25),
-        nn.Linear(in_features=512, out_features=1024),
-        nn.ReLU(),
-        nn.BatchNorm1d(1024, eps=1e-5, momentum=0.1),
-        nn.Dropout(p=0.5),
-        nn.Linear(in_features=1024, out_features=5),
-        nn.Sigmoid(),
-    )
-    return model
+class get_model(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.base_model = torchvision.models.resnet34(pretrained=True)
+        in_features = self.base_model.fc.in_features
+        self.out = nn.Linear(in_features, 5)
+    
+    def forward(self, image, targets=None):
+        
+        batch_size, C, H, W = image.shape
+        x = self.base_model.conv1(image)
+        x = self.base_model.bn1(x)
+        x = self.base_model.relu(x)
+        x = self.base_model.maxpool(x)
+        
+        x = self.base_model.layer1(x)
+        x = self.base_model.layer2(x)
+        x = self.base_model.layer3(x)
+        x = self.base_model.layer4(x)
+        
+        x = F.adaptive_avg_pool2d(x, 1).reshape(batch_size, -1)
+        x = self.out(x)
+        return x
 
 
 # Efficientnet
