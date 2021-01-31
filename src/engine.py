@@ -3,7 +3,7 @@ from sklearn import metrics
 from tqdm import tqdm
 import torch
 import torch.nn as nn
-import numpy as np 
+import numpy as np
 
 
 def Train(dataset, dataloader, model, optimizer, device):

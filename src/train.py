@@ -40,9 +40,9 @@ def run(fold):
         print(
             f"fold = {fold}, epoch={epoch}, train loss = {train_loss}\
         valid_loss = {valid_loss}, accuracy={valid_acc}"
-        ) 
+        )
         if valid_acc > best_accuracy:
-            torch.save(model.state_dict(), 'models/model.pt')
+            torch.save(model.state_dict(), "models/model.pt")
             best_accuracy = valid_acc
 
 
