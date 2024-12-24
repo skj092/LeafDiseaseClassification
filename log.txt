@@ -1,0 +1,39 @@
+-> model.eval()
+(Pdb) x = img
+(Pdb) x = model.conv1(x)
+(Pdb)  print(x.mean(), x.std(), x.min(), x.max())
+tensor(0.3998, grad_fn=<MeanBackward0>) tensor(1.8797, grad_fn=<StdBackward0>) tensor(-11.6244, grad_fn=<MinBackward1>) tensor(12.3314, grad_fn=<MaxBackward1>)
+(Pdb) x = model.layer1(x)
+(Pdb)  print(x.mean(), x.std(), x.min(), x.max())
+tensor(0.9875, grad_fn=<MeanBackward0>) tensor(1.2986, grad_fn=<StdBackward0>) tensor(0., grad_fn=<MinBackward1>) tensor(12.6412, grad_fn=<MaxBackward1>)
+(Pdb) x = model.layer2(x)
+(Pdb)  print(x.mean(), x.std(), x.min(), x.max())
+tensor(0.2011, grad_fn=<MeanBackward0>) tensor(0.3412, grad_fn=<StdBackward0>) tensor(0., grad_fn=<MinBackward1>) tensor(3.3956, grad_fn=<MaxBackward1>)
+(Pdb) x = model.layer3(x)
+(Pdb)  print(x.mean(), x.std(), x.min(), x.max())
+tensor(0.1173, grad_fn=<MeanBackward0>) tensor(0.2839, grad_fn=<StdBackward0>) tensor(0., grad_fn=<MinBackward1>) tensor(7.3908, grad_fn=<MaxBackward1>)
+(Pdb) x = model.layer4(x)
+(Pdb)  print(x.mean(), x.std(), x.min(), x.max())
+tensor(0.5495, grad_fn=<MeanBackward0>) tensor(1.4539, grad_fn=<StdBackward0>) tensor(0., grad_fn=<MinBackward1>) tensor(22.7399, grad_fn=<MaxBackward1>)
+(Pdb) c
+train_loss 2.881, valid_loss 200.982
+train_acc 0.385, valid_acc 0.375
+> /home/sonujha/rnd/LeafDiseaseClassification/src/engine.py(38)train_one_epoch()
+-> return train_loss, valid_loss
+(Pdb) x = img
+(Pdb) x = model.conv1(x)
+(Pdb)  print(x.mean(), x.std(), x.min(), x.max())
+tensor(-0.6049, grad_fn=<MeanBackward0>) tensor(1.6523, grad_fn=<StdBackward0>) tensor(-8.9196, grad_fn=<MinBackward1>) tensor(11.5075, grad_fn=<MaxBackward1>)
+(Pdb) x = model.layer1(x)
+(Pdb)  print(x.mean(), x.std(), x.min(), x.max())
+tensor(2.6721, grad_fn=<MeanBackward0>) tensor(3.9348, grad_fn=<StdBackward0>) tensor(0., grad_fn=<MinBackward1>) tensor(27.5755, grad_fn=<MaxBackward1>)
+(Pdb) x = model.layer2(x)
+(Pdb)  print(x.mean(), x.std(), x.min(), x.max())
+tensor(3.1521, grad_fn=<MeanBackward0>) tensor(5.6598, grad_fn=<StdBackward0>) tensor(0., grad_fn=<MinBackward1>) tensor(63.6532, grad_fn=<MaxBackward1>)
+(Pdb) x = model.layer3(x)
+(Pdb)  print(x.mean(), x.std(), x.min(), x.max())
+tensor(12.8935, grad_fn=<MeanBackward0>) tensor(24.2205, grad_fn=<StdBackward0>) tensor(0., grad_fn=<MinBackward1>) tensor(240.7746, grad_fn=<MaxBackward1>)
+(Pdb) x = model.layer4(x)
+(Pdb)  print(x.mean(), x.std(), x.min(), x.max())
+tensor(3793.6470, grad_fn=<MeanBackward0>) tensor(4168.2656, grad_fn=<StdBackward0>) tensor(0., grad_fn=<MinBackward1>) tensor(21953.4863, grad_fn=<MaxBackward1>)
+

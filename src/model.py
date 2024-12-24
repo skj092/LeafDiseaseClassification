@@ -14,7 +14,7 @@ model.fc = nn.Linear(512, 5)
 
 if __name__ == "__main__":
     df = pd.read_csv("data/train.csv")
-    ds = LeafDataset(df, transforms=transforms.ToTensor())
+    ds = LeafDataset(df, 'data', transforms=transforms.ToTensor())
     dl = DataLoader(ds, batch_size=2, shuffle=True)
     for i, (img, label) in enumerate(dl):
         print(img.shape, label.shape)
