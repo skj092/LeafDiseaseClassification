@@ -23,8 +23,8 @@ if __name__ == "__main__":
     train_df = df[df.kfold != 0].reset_index(drop=True)
     valid_df = df[df.kfold == 1].reset_index(drop=True)
 
-    train_ds = LeafDataset(train_df, transforms=transforms.ToTensor())
-    valid_ds = LeafDataset(valid_df, transforms=transforms.ToTensor())
+    train_ds = LeafDataset(train_df, data_path, transforms=transforms.ToTensor())
+    valid_ds = LeafDataset(valid_df, data_path, transforms=transforms.ToTensor())
 
     if args.debug:
         train_ds = Subset(train_ds, np.arange(100))

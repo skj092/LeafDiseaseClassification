@@ -7,8 +7,9 @@ import torch
 
 
 class LeafDataset(Dataset):
-    def __init__(self, df, transforms=None):
+    def __init__(self, df, data_dir, transforms=None):
         self.df = df
+        self.data_dir = data_dir
         self.transforms = transforms
 
     def __len__(self):
@@ -18,7 +19,7 @@ class LeafDataset(Dataset):
         img_name = self.df.iloc[idx, 0]
         label = self.df.iloc[idx, 1]
 
-        img_path = os.path.join('data/train_images/', img_name)
+        img_path = os.path.join(self.data_dir, 'train_images', img_name)
         img = Image.open(img_path).resize((224, 224))
         if self.transforms:
             img = self.transforms(img)
