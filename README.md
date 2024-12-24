@@ -4,11 +4,24 @@
 
 cassava is a key food security crop grown by smallholder farmers because it can withstand harsh conditions. At least 80% of household farms in Sub-Saharan Africa grow this starchy root, but viral diseases are major sources of poor yields. With the help of data science, it may be possible to identify common diseases so they can be treated.
 
+
+```bash
+python src/train.py -d True --data_dir data/
+python src/train.py --data_dir data/
+```
+
+
+
+
+
+
+
 **Solution**
 
 |model|accuracy|validation loss|epochs|lr|
 |:------|:-------:|:-------:|:---:|:----:|
 |resnet18|71%|1.63|5|1e-3|
 |resnet34|84%|0.89|8|3e-3|
+
 
 

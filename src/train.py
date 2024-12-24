@@ -1,4 +1,3 @@
-import pandas as pd
 import torch
 from dataset import LeafDataset
 from torchvision import transforms
@@ -8,10 +7,18 @@ import config
 import torch.nn as nn
 import numpy as np
 from engine import train_one_epoch
+import argparse
+from create_fold import get_fold
 
 
 if __name__ == "__main__":
-    df = pd.read_csv("data/train_fold.csv")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', '--debug')
+    parser.add_argument('-data_dir', '--data_dir')
+    args = parser.parse_args()
+    data_path = args.data_dir
+
+    df = get_fold(data_path)
 
     train_df = df[df.kfold != 0].reset_index(drop=True)
     valid_df = df[df.kfold == 1].reset_index(drop=True)
@@ -19,8 +26,9 @@ if __name__ == "__main__":
     train_ds = LeafDataset(train_df, transforms=transforms.ToTensor())
     valid_ds = LeafDataset(valid_df, transforms=transforms.ToTensor())
 
-    train_ds = Subset(train_ds, np.arange(100))
-    valid_ds = Subset(valid_ds, np.arange(24))
+    if args.debug:
+        train_ds = Subset(train_ds, np.arange(100))
+        valid_ds = Subset(valid_ds, np.arange(24))
 
     train_dl = DataLoader(train_ds, batch_size=config.batch_size, shuffle=True)
     valid_dl = DataLoader(valid_ds, batch_size=config.batch_size, shuffle=True)
