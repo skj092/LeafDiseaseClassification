@@ -140,4 +140,6 @@ model/
 *.json 
 
 
-data/
+data/*.pth
+data
+models/

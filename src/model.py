@@ -1,49 +1,33 @@
-import pretrainedmodels
+from torchvision.models import resnet18
 import torch.nn as nn
-import torchvision
-import torch.nn.functional as F
+from dataset import LeafDataset
+import pandas as pd
+from torchvision import transforms
+from torch.utils.data import DataLoader
+import torch
+from sklearn.metrics import accuracy_score
 
-# Resnet
-class get_model(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.base_model = torchvision.models.resnet34(pretrained=True)
-        in_features = self.base_model.fc.in_features
-        self.out = nn.Linear(in_features, 5)
+import sys
 
-    def forward(self, image, targets=None):
+model = resnet18(pretrained=True)
+model.fc = nn.Linear(512, 5)
 
-        batch_size, C, H, W = image.shape
-        x = self.base_model.conv1(image)
-        x = self.base_model.bn1(x)
-        x = self.base_model.relu(x)
-        x = self.base_model.maxpool(x)
-
-        x = self.base_model.layer1(x)
-        x = self.base_model.layer2(x)
-        x = self.base_model.layer3(x)
-        x = self.base_model.layer4(x)
-
-        x = F.adaptive_avg_pool2d(x, 1).reshape(batch_size, -1)
-        x = self.out(x)
-        return x
-
-
-# Efficientnet
-from efficientnet_pytorch import EfficientNet
-
-
-class LeafModel(nn.Module):
-    def __init__(self, num_classes):
-        super().__init__()
-        self.effnet = EfficientNet.from_pretrained("efficientnet-b3")
-        self.dropout = nn.Dropout(0.1)
-        self.out = nn.Linear(1536, num_classes)
-
-    def forward(self, image):
-        batch_size, _, _, _ = image.shape
-
-        x = self.effnet.extract_features(image)
-        x = F.adaptive_avg_pool2d(x, 1).reshape(batch_size, -1)
-        outputs = self.out(self.dropout(x))
-        return outputs
+if __name__ == "__main__":
+    df = pd.read_csv("data/train.csv")
+    ds = LeafDataset(df, transforms=transforms.ToTensor())
+    dl = DataLoader(ds, batch_size=2, shuffle=True)
+    for i, (img, label) in enumerate(dl):
+        print(img.shape, label.shape)
+        print('image batch shape', img.shape)
+        print('label batch shape', label.shape)
+        out = model(img)
+        print('model output shape', out.shape)
+        loss_fn = nn.CrossEntropyLoss()
+        loss = loss_fn(out, label)
+        print('loss = ', loss)
+        output_label = torch.argmax(out, dim=1)
+        print('output label ', output_label)
+        print('actual label', label)
+        acc = accuracy_score(torch.argmax(out, dim=1), label)
+        print('accuracy = ', acc)
+        sys.exit()

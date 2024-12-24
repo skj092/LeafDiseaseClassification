@@ -2,7 +2,7 @@ import pandas as pd
 from sklearn import model_selection
 
 if __name__ == "__main__":
-    df = pd.read_csv("input/train.csv")
+    df = pd.read_csv("data/train.csv")
 
     df["kfold"] = -1
 
@@ -15,4 +15,4 @@ if __name__ == "__main__":
     for f, (t_, v_) in enumerate(kf.split(X=df, y=label)):
         df.loc[v_, "kfold"] = f
 
-    df.to_csv("input/train_fold.csv", index=False)
+    df.to_csv("data/train_fold.csv", index=False)
