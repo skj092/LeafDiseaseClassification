@@ -18,7 +18,7 @@ def get_fold(root):
     for f, (t_, v_) in enumerate(kf.split(X=df, y=label)):
         df.loc[v_, "kfold"] = f
 
-    df.to_csv("data/train_fold.csv", index=False)
+    #df.to_csv("data/train_fold.csv", index=False)
     return df
 
 
