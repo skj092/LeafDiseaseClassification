@@ -9,6 +9,7 @@ import numpy as np
 from engine import train_one_epoch
 import argparse
 from create_fold import get_fold
+from pathlib import Path
 
 
 if __name__ == "__main__":
@@ -41,4 +42,5 @@ if __name__ == "__main__":
     for epoch in range(config.N_EPOCHS):
         train_one_epoch(model, train_dl, valid_dl, loss_fn, optimizer)
 
-    torch.save(model.state_dict(), config.MODEL_PATH)
+    Path(config.MODEL_PATH).mkdir(exist_ok=True)
+    torch.save(model.state_dict(), str(Path(config.MODEL_PATH)/"model.pth"))
