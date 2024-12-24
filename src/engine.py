@@ -1,7 +1,6 @@
 from tqdm import tqdm
 import config
 import torch
-from sklearn.metrics import accuracy_score
 
 
 def train_one_epoch(model, train_dl, valid_dl, criterion, optimizer):
@@ -17,7 +16,7 @@ def train_one_epoch(model, train_dl, valid_dl, criterion, optimizer):
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
-        train_acc += accuracy_score(torch.argmax(output, dim=1), label)
+        train_acc += (torch.argmax(output, dim=1) == label).float().mean().item()
     model.eval()
     valid_loss, valid_acc = 0, 0
     with torch.no_grad():
@@ -26,7 +25,7 @@ def train_one_epoch(model, train_dl, valid_dl, criterion, optimizer):
             label = label.to(config.device)
             output = model(img)
             valid_loss += criterion(output, label).item()
-            valid_acc += accuracy_score(torch.argmax(output, dim=1), label)
+            valid_acc += (torch.argmax(output, dim=1) == label).float().mean().item()
     train_loss = train_loss / len(train_dl)
     valid_loss = valid_loss / len(valid_dl)
     train_acc = train_acc / len(train_dl)
