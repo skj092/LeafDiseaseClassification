@@ -1,4 +1,4 @@
-from torchvision.models import resnet18
+from torchvision import models
 import torch.nn as nn
 from dataset import LeafDataset
 import pandas as pd
@@ -6,11 +6,21 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 import torch
 from sklearn.metrics import accuracy_score
+from config import Config
 
 import sys
 
-model = resnet18(pretrained=True)
-model.fc = nn.Linear(512, 5)
+
+# model.py
+
+class ModelFactory:
+    @staticmethod
+    def get_model(config: Config):
+        # Example: Return a model based on config parameters
+        # Replace with your actual model initialization
+        model = models.resnet18(pretrained=False, num_classes=10)
+        return model
+
 
 if __name__ == "__main__":
     df = pd.read_csv("data/train.csv")

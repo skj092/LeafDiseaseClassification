@@ -11,4 +11,6 @@ dependencies = [
     "tqdm>=4.67.1",
     "scikit-learn>=1.6.0",
     "notebook>=7.3.2",
+    "wandb>=0.19.1",
+    "python-dotenv>=1.0.1",
 ]
