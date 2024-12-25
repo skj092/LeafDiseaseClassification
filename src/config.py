@@ -53,7 +53,11 @@ class Config:
             self.num_epochs = 2
             self.data_path = "data/"
         elif env == 'kaggle':
-            # Define Kaggle-specific overrides if any
+            self.batch_size = min(self.batch_size, 32)
+            self.num_workers = 2
+            self.pin_memory = False
+            self.num_epochs = 10
+            self.data_path = "/kaggle/input/cassava-leaf-disease-classification"
             pass
         else:
             raise ValueError(f"Unknown environment: {env}")
