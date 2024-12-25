@@ -58,6 +58,5 @@ class Config:
             self.pin_memory = False
             self.num_epochs = 10
             self.data_path = "/kaggle/input/cassava-leaf-disease-classification"
-            pass
         else:
             raise ValueError(f"Unknown environment: {env}")
