@@ -1,166 +1,160 @@
-# main.py
-
-import torch
-from dataset import LeafDataset
-from torch.utils.data import DataLoader, Subset
-from model import ModelFactory
-from config import Config
-import torch.nn as nn
-import numpy as np
-from engine import train_one_epoch
-import argparse
-from create_fold import get_fold
 from pathlib import Path
-import wandb
-from dotenv import load_dotenv
-import json
 import os
-import sys
-import logging
-from datetime import datetime
+import torch
+from torch.utils.data import Dataset, DataLoader
+import pandas as pd
+from torchvision import models
+from PIL import Image
+from tqdm import tqdm
+from torch import nn
+from sklearn.model_selection import train_test_split
+import numpy as np
+import albumentations as A
+import matplotlib.pyplot as plt
+import time
+import random
 
 
+def seed_everything(seed):
+    random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    # tf.set_random_seed(seed)
 
-# Initialize environment variables
-load_dotenv()
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler("experiment.log")
+seed_everything(42)
+torch.backends.cudnn.benchmark = True
+
+
+class CassavaDataset(Dataset):
+    def __init__(self, df, data_dir, transforms=None):
+        self.df = df
+        self.data_dir = data_dir
+        self.tfms = transforms
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        img_id, label = self.df.iloc[idx]
+        img_path = os.path.join(self.data_dir, img_id)
+
+        img = Image.open(img_path)
+        img = np.array(img)
+        if self.tfms:
+            img = self.tfms(image=img)["image"].transpose(2, 0, 1)
+        return torch.tensor(img), torch.tensor(label, dtype=torch.long)
+
+
+def get_model():
+    model = models.resnet18(weights="ResNet18_Weights.DEFAULT")
+    model.fc = nn.Linear(512, 5)
+    return model
+
+
+def train_one_epoch(model, train_dl, valid_dl, loss_fn, optim):
+    model.train()
+    train_loss, train_acc = 0, 0
+    loop = tqdm(train_dl)
+    for i, (xb, yb) in enumerate(loop):
+        xb = xb.to(device)
+        yb = yb.to(device)
+        optim.zero_grad()
+        logit = model(xb)
+        loss = loss_fn(logit, yb)
+        loss.backward()
+        train_loss += loss.item()
+        optim.step()
+        train_acc += (torch.argmax(logit, dim=1) == yb).float().mean().item()
+
+    # Evaluation on one epoch
+    model.eval()
+    valid_loss, valid_acc = 0, 0
+    loop = tqdm(valid_dl)
+    with torch.no_grad():
+        for i, (xb, yb) in enumerate(loop):
+            xb = xb.to(device)
+            yb = yb.to(device)
+            logit = model(xb)
+            valid_loss += loss_fn(logit, yb).item()
+            valid_acc += (torch.argmax(logit, dim=1) == yb).float().mean().item()
+    train_acc /= len(train_dl)
+    valid_acc /= len(valid_dl)
+    train_loss /= len(train_dl)
+    valid_loss /= len(valid_dl)
+    print(f"train_loss: {train_loss:.3f}, valid_loss: {valid_loss:.3f}")
+    print(f"train_acc: {train_acc:.2f}, valid_acc: {valid_acc:.2f}")
+    return train_loss, valid_loss, train_acc, valid_acc
+
+
+tik = time.time()
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+path = Path("/kaggle/input/cassava-leaf-disease-classification")
+df = pd.read_csv(path / "train.csv")
+# df = df.sample(frac=0.05)
+print(f"shape of df: {df.shape}")
+train_df, valid_df = train_test_split(df, test_size=0.2, stratify=df["label"])
+
+# trand and valid transforms
+train_tfms = A.Compose(
+    [
+        A.RandomCrop(width=224, height=224),
+        A.HorizontalFlip(p=0.5),
+        A.RandomBrightnessContrast(p=0.2),
+        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
     ]
 )
-logger = logging.getLogger(__name__)
+valid_tfms = A.Compose(
+    [
+        A.Resize(height=224, width=224),
+        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+    ]
+)
 
+# Get train and valid dataset, dataloader
+train_ds = CassavaDataset(train_df, path / "train_images", transforms=train_tfms)
+valid_ds = CassavaDataset(valid_df, path / "train_images", transforms=valid_tfms)
 
-def run_experiment(config: Config):
-    """
-    Runs a single experiment based on the provided configuration.
-    """
-    try:
-        # Override configuration based on environment
-        config.override_with_env(config.env)
-        # Initialize W&B
-        wandb.login()
-        # Extract name from path
-        experiment_name = f"{Path(config.MODEL_PATH).stem}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        wandb.init(project="cassava-experiment",
-                   config=vars(config), name=experiment_name)
+train_dl = DataLoader(train_ds, batch_size=64, shuffle=True)
+valid_dl = DataLoader(valid_ds, batch_size=64, shuffle=False)
 
-        # Prepare dataset and dataloader
-        df = get_fold(config.data_path)
+model = get_model()
+model.to(device)
 
-        for fold in range(config.n_fold):
-            train_df = df[df.kfold != 0].reset_index(drop=True)
-            valid_df = df[df.kfold == 1].reset_index(drop=True)
+optim = torch.optim.Adam(model.parameters(), lr=1e-3)
+loss_fn = nn.CrossEntropyLoss()
 
-            train_ds = LeafDataset(train_df, config.data_path,
-                                   transforms=config.train_tfms)
-            valid_ds = LeafDataset(valid_df, config.data_path,
-                                   transforms=config.valid_tfms)
+train_losses, valid_losses, train_accuracies, valid_accuracies = [], [], [], []
+for epoch in range(10):
+    print(f"============Epoch: {epoch}/10 ============")
+    train_loss, valid_loss, train_acc, valid_acc = train_one_epoch(
+        model, train_dl, valid_dl, loss_fn, optim
+    )
+    train_losses.append(train_loss)
+    valid_losses.append(valid_loss)
+    train_accuracies.append(train_acc)
+    valid_accuracies.append(valid_acc)
 
-            if config.env == 'local':
-                train_ds = Subset(train_ds, np.arange(10))
-                valid_ds = Subset(valid_ds, np.arange(2))
+# save the model
+torch.save(model.state_dict(), "resnet18.pth")
+tok = time.time()
+print(f"Total time take {tok-tik:.2f}s")
 
-            train_dl = DataLoader(
-                train_ds,
-                batch_size=config.batch_size,
-                shuffle=True,
-                num_workers=config.num_workers,
-                pin_memory=config.pin_memory
-            )
-            valid_dl = DataLoader(
-                valid_ds,
-                batch_size=config.batch_size,
-                shuffle=False,
-                num_workers=config.num_workers,
-                pin_memory=config.pin_memory
-            )
+# Plot the graph
+plt.plot(train_losses, color="blue", label="train loss")
+plt.plot(valid_losses, color="red", label="valid loss")
+plt.xlabel("epochs")
+plt.ylabel("score")
+plt.legend()
+plt.show()
 
-            # Model setup
-            model = ModelFactory.get_model(config)
-            model = model.to(config.device)
-
-            # Loss and optimizer
-            loss_fn = nn.CrossEntropyLoss()
-            optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
-
-            # Training loop
-            for epoch in range(config.num_epochs):
-                train_loss, valid_loss, train_acc, valid_acc = train_one_epoch(
-                    model, train_dl, valid_dl, loss_fn, optimizer)
-                wandb.log({
-                    "epoch": epoch + 1,
-                    "train_loss": train_loss,
-                    "valid_loss": valid_loss,
-                    "train_accuracy": train_acc,
-                    "valid_accuracy": valid_acc
-                })
-                logger.info(f"Experiment: {experiment_name} | Epoch [{epoch+1}/{config.num_epochs}] - "
-                            f"Train Loss: {train_loss:.4f}, Valid Loss: {valid_loss:.4f}, "
-                            f"Train Acc: {train_acc:.4f}, Valid Acc: {valid_acc:.4f}")
-
-            # Save the model
-            model_dir = Path(config.MODEL_PATH)
-            model_dir.mkdir(parents=True, exist_ok=True)
-            model_save_path = model_dir / f'model_fold_{fold}.pth'
-            torch.save(model.state_dict(), model_save_path)
-
-        wandb.finish()
-        logger.info(f"Experiment {experiment_name} completed successfully.")
-
-    except Exception as e:
-        logger.error(e)
-        logger.error(f"Experiment {config.MODEL_PATH} failed with error: {e}")
-        wandb.finish()
-        raise e
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Sequential Experiment Runner")
-    parser.add_argument('--config_dir', type=str, required=True,
-                        help='Path to the directory containing config files')
-    parser.add_argument('--env', type=str,
-                        choices=['local', 'kaggle'], required=True,
-                        help='Environment to run the experiments in')
-    args = parser.parse_args()
-
-    # Validate config directory
-    if not os.path.isdir(args.config_dir):
-        logger.error(f"Config directory {args.config_dir} does not exist.")
-        sys.exit(1)
-
-    # List all config files in the config directory
-    config_files = [f for f in os.listdir(
-        args.config_dir) if f.endswith('.json')]
-
-    if not config_files:
-        logger.error(f"No configuration files found in {args.config_dir}")
-        sys.exit(1)
-
-    # Iterate over each config file and run the experiment
-    for config_file in config_files:
-        config_path = os.path.join(args.config_dir, config_file)
-        logger.info(f"Starting experiment with config: {config_path}")
-
-        # Load configuration
-        config = Config.from_json(config_path)
-        config.env = args.env  # Set the environment
-
-        # Run the experiment
-        try:
-            run_experiment(config)
-        except Exception as e:
-            logger.error(
-                f"Experiment with config {config_file} failed. Skipping to next. {e}")
-            continue  # Proceed to the next experiment
-
-
-if __name__ == "__main__":
-    main()
-
+plt.plot(train_accuracies, color="blue", label="train accuracy")
+plt.plot(valid_accuracies, color="red", label="valid accuracy")
+plt.xlabel("epochs")
+plt.ylabel("score")
+plt.legend()
+plt.show()
