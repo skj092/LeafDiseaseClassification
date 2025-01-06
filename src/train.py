@@ -47,10 +47,10 @@ for fold, (train_index, valid_index) in enumerate(skf.split(df2020, df2020["labe
     valid_dl = DataLoader(valid_ds, batch_size=batch_size, shuffle=False)
 
     # resnet34
-    #model = get_model()
+    # model = get_model()
 
     # vit model
-    model = myModel(arch_name, pretrained=True,img_size=384)
+    model = myModel(arch_name, pretrained=True, img_size=384)
     if multi_gpu:
         model = torch.nn.DataParallel(model)
     model.to(device)
@@ -58,7 +58,8 @@ for fold, (train_index, valid_index) in enumerate(skf.split(df2020, df2020["labe
     # optimizer and loss functions
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     loss_fn = nn.CrossEntropyLoss()
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(
+        optimizer, lr_lambda=lambda epoch: 1.0 / (1.0 + epoch))
 
     best_loss = float('inf')
     model_dir = Path(f"{path}/models")
