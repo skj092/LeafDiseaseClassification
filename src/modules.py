@@ -1,3 +1,4 @@
+import wandb
 import os
 import torch
 from torch.utils.data import Dataset
@@ -15,6 +16,9 @@ from albumentations import (
 )
 import cv2
 from albumentations.pytorch import ToTensorV2
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -22,35 +26,37 @@ MEAN = [0.5, 0.5, 0.5]
 STD = [0.5, 0.5, 0.5]
 
 
-
-def setup_logger(log_file='training_log.log', level=logging.INFO):
+def setup_logger(log_file='training_log.log', use_wandb=False, project_name=None):
     """
-    Sets up the logger to log to both a file and the console.
-
+    Sets up logging to file, console, and optionally WandB.
     Args:
-    - log_file (str): The name of the log file. Defaults to 'training_log.log'.
-    - level (int): The logging level. Defaults to logging.INFO.
-
+        log_file (str): Log file path
+        use_wandb (bool): Whether to use WandB
+        project_name (str): WandB project name if use_wandb is True
     Returns:
-    - logger: A logger instance.
+        tuple: (logger, wandb_run) if use_wandb True, else (logger, None)
     """
-    logger = logging.getLogger()  # Get the root logger
-    logger.setLevel(level)
+    logger = logging.getLogger()
+    logger.handlers.clear()
+    logger.setLevel(logging.INFO)
 
-    # Create handlers
-    file_handler = logging.FileHandler(log_file)
-    stream_handler = logging.StreamHandler(sys.stdout)
-
-    # Set formatter
     formatter = logging.Formatter('%(asctime)s - %(message)s')
-    file_handler.setFormatter(formatter)
-    stream_handler.setFormatter(formatter)
 
-    # Add handlers to logger
-    logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
+    # Add file and console handlers
+    for handler in [logging.FileHandler(log_file), logging.StreamHandler(sys.stdout)]:
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
-    return logger
+    # Setup WandB if enabled
+    run = None
+    if use_wandb:
+        try:
+            run = wandb.init(project=project_name)
+            logger.info("WandB initialized")
+        except Exception as e:
+            logger.warning(f"WandB initialization failed: {e}")
+
+    return logger, run
 
 
 def seed_everything(seed=42):
@@ -90,7 +96,7 @@ def get_model():
     return model
 
 
-def train_one_epoch(model, train_dl, valid_dl, loss_fn, optim, logger):
+def train_one_epoch(model, train_dl, valid_dl, loss_fn, optim, scheduler, logger, run=None):
     model.train()
     train_loss, train_acc = 0, 0
     loop = tqdm(train_dl)
@@ -103,6 +109,7 @@ def train_one_epoch(model, train_dl, valid_dl, loss_fn, optim, logger):
         loss.backward()
         train_loss += loss.item()
         optim.step()
+        scheduler.step()
         train_acc += (torch.argmax(logit, dim=1) == yb).float().mean().item()
 
     # Evaluation on one epoch
@@ -121,8 +128,18 @@ def train_one_epoch(model, train_dl, valid_dl, loss_fn, optim, logger):
     valid_acc /= len(valid_dl)
     train_loss /= len(train_dl)
     valid_loss /= len(valid_dl)
+    current_lr = optim.param_groups[0]['lr']
     logger.info(f"train_loss: {train_loss:.3f}, valid_loss: {valid_loss:.3f}")
     logger.info(f"train_acc: {train_acc:.2f}, valid_acc: {valid_acc:.2f}")
+    logger.info(f"current_lr: {current_lr:.6f}")
+    if run is not None:
+        run.log({
+            'epoch/train_loss': train_loss,
+            'epoch/valid_loss': valid_loss,
+            'epoch/train_acc': train_acc,
+            'epoch/valid_acc': valid_acc,
+            'epoch/learning_rate': current_lr
+        })
     return train_loss, valid_loss, train_acc, valid_acc
 
 
@@ -149,4 +166,3 @@ def get_transform(is_train=True):
             ),
             ToTensorV2(),
         ])
-

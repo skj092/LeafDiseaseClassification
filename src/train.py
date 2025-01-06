@@ -3,37 +3,34 @@ import torch
 import pandas as pd
 from torch import nn
 from sklearn.model_selection import StratifiedKFold
-import albumentations as A
-import time
 from torch.utils.data import DataLoader
 from modules import (setup_logger, seed_everything,
                      CassavaDataset, get_model, train_one_epoch,
                      get_transform)
 
 
-tik = time.time()
-
-
-logger = setup_logger()
+# Config Setup
 seed_everything(42)
 use_external = False
 multi_gpu = False
+wandb = True
+batch_size = 4
+num_epochs = 20
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-local_path = Path("/home/sonujha/rnd/LeafDiseaseClassification/data/merged")
-studio_path = Path('/teamspace/studios/this_studio/LeafDiseaseClassification/data/')
+path = Path("./data")
 
 # lightning studio specific
-path = studio_path if studio_path.exists() else local_path
 df = pd.read_csv(path / "merged.csv")
+logger, run = setup_logger(use_wandb=wandb, project_name="cassava-experiment")
 logger.info(f"shape of df: {df.shape}")
 
 
 df2020 = df[df["source"] == 2020]
-# df2020 = df2020.sample(frac=0.05)
+df2020 = df2020.sample(n=10)
 skf = StratifiedKFold(
     n_splits=5, shuffle=True, random_state=42,
 )
-for train_index, valid_index in skf.split(df2020, df2020["label"].values):
+for fold, (train_index, valid_index) in enumerate(skf.split(df2020, df2020["label"].values)):
     train_df = df2020.iloc[train_index] if not use_external else pd.concat(
         [df2020.iloc[train_index], df[df["source"] == 2019]], axis=0)
     valid_df = df2020.iloc[valid_index]
@@ -44,8 +41,8 @@ for train_index, valid_index in skf.split(df2020, df2020["label"].values):
     valid_ds = CassavaDataset(
         valid_df, path / "train", transforms=get_transform(is_train=False))
 
-    train_dl = DataLoader(train_ds, batch_size=196, shuffle=True)
-    valid_dl = DataLoader(valid_ds, batch_size=196, shuffle=False)
+    train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+    valid_dl = DataLoader(valid_ds, batch_size=batch_size, shuffle=False)
 
     # Load the model
     model = get_model()
@@ -54,16 +51,31 @@ for train_index, valid_index in skf.split(df2020, df2020["label"].values):
     model.to(device)
 
     # optimizer and loss functions
-    optim = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     loss_fn = nn.CrossEntropyLoss()
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, num_epochs)
 
-    for epoch in range(10):
-        logger.info(f"============Epoch: {epoch}/10 ============")
+    best_loss = float('inf')
+    model_dir = Path(f"{path}/models")
+    model_dir.mkdir(parents=True, exist_ok=True)
+    for epoch in range(num_epochs):
+        state = {
+            'epoch': epoch,
+            'best_loss': best_loss,
+            'state_dict': model.state_dict(),
+            'optimizer': optimizer.state_dict()
+        }
+        logger.info(f"============Epoch: {epoch}/{num_epochs} ============")
         train_loss, valid_loss, train_acc, valid_acc = train_one_epoch(
-            model, train_dl, valid_dl, loss_fn, optim, logger
+            model, train_dl, valid_dl, loss_fn, optimizer, scheduler, logger, run
         )
 
-    # save the model
-    torch.save(model.state_dict(), "model.pth")
-    tok = time.time()
-    logger.info(f"Total time take {tok-tik:.2f}s")
+        # save the model
+        if valid_loss < best_loss:
+            model_file = model_dir / f"model_{fold}.pth"
+            print('========New optimal found, saving state==========')
+            state['best_loss'] = best_loss = valid_loss
+            torch.save(state, model_file)
+
+if run:
+    run.finish()
