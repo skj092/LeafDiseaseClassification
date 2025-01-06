@@ -1,13 +1,15 @@
 # evaluate the test data
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, Subset
 import os
 import torch
-from torchvision.models import resnet18
+from torchvision import models
 import pandas as pd
 import torch.nn as nn
 from glob import glob
 from PIL import Image
 from torchvision import transforms
+import kagglehub
+import numpy as np
 
 
 class config:
@@ -17,7 +19,8 @@ class config:
         [
             transforms.Resize((224, 224)),
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            transforms.Normalize([0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225]),
         ]
     )
 
@@ -62,22 +65,32 @@ def predict_batch(model, test_dl):
 
 
 if __name__ == "__main__":
-    data_dir = "/kaggle/input/cassava-leaf-disease-classification"
+    data_dir = "/home/sonujha/rnd/LeafDiseaseClassification/data/"
     test_image_path = os.path.join(data_dir, "test_images")
     test_dataset = LeafDataset(test_image_path, transforms=config.valid_tfms)
-    test_dl = DataLoader(test_dataset, batch_size=config.batch_size, shuffle=False)
+    test_dl = DataLoader(
+        test_dataset, batch_size=config.batch_size, shuffle=False)
 
-    model = resnet18()
+    # Download latest version
+    model = models.resnet34(weights=None)
     model.fc = nn.Linear(512, 5)
     model.to(config.device)
 
-    model_path = os.path.join("/kaggle/input/cassava-leaf-disease", "resnet18.pth")
-    model.load_state_dict(
-        torch.load(model_path, weights_only=True, map_location=config.device)
-    )
-    model.eval()
+    model_dir = kagglehub.dataset_download("sonujha090/cassava-models")
+    models = []
+    for model_name in os.listdir(model_dir):
+        state = torch.load(os.path.join(model_dir, model_name),
+                           weights_only=True, map_location=config.device)
+        model.load_state_dict(state['state_dict'])
+        model.eval()
+        models.append(model)
 
-    preds = predict_batch(model, test_dl)
+    # Ensemble Predictions
+    model_preds = []
+    for i in range(len(models)):
+        preds = predict_batch(models[i], test_dl)
+        model_preds.append(preds)
+    preds = np.stack(model_preds).mean(axis=0)
     # print(preds)
 
     # submission file

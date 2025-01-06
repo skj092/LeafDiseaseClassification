@@ -237,11 +237,26 @@ wheels = [
 ]
 
 [[package]]
+name = "kagglehub"
+version = "0.3.6"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "packaging" },
+    { name = "requests" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0c/90/66b0b0202e64ddea6dac41d9a463b4110c28ef95d7b32be28967d714b9d9/kagglehub-0.3.6.tar.gz", hash = "sha256:3e9485f8ff59d87d1055f1cb22369ffd943826492ff586368ba1934a58c11291", size = 89808 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/99/62/5fc1fc324860dd1b1d17b750bae2a41305a4780dab7a2acfb1fec84665d9/kagglehub-0.3.6-py3-none-any.whl", hash = "sha256:fac03aeb53cb75ab1d0ed464eb2198d022548c0589983d2e061323db5816ff52", size = 51926 },
+]
+
+[[package]]
 name = "leafdiseaseclassification"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "albumentations" },
+    { name = "kagglehub" },
     { name = "pandas" },
     { name = "python-dotenv" },
     { name = "scikit-learn" },
@@ -255,6 +270,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "albumentations", specifier = ">=1.4.24" },
+    { name = "kagglehub", specifier = ">=0.3.6" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "scikit-learn", specifier = ">=1.6.0" },
