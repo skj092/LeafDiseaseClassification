@@ -13,4 +13,6 @@ dependencies = [
     "notebook>=7.3.2",
     "wandb>=0.19.1",
     "python-dotenv>=1.0.1",
+    "albumentations>=1.4.24",
+    "matplotlib>=3.10.0",
 ]
