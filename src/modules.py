@@ -134,11 +134,11 @@ def train_one_epoch(model, train_dl, valid_dl, loss_fn, optim, scheduler, logger
     logger.info(f"current_lr: {current_lr:.6f}")
     if run is not None:
         run.log({
-            'epoch/train_loss': train_loss,
-            'epoch/valid_loss': valid_loss,
-            'epoch/train_acc': train_acc,
-            'epoch/valid_acc': valid_acc,
-            'epoch/learning_rate': current_lr
+            'train_loss': train_loss,
+            'valid_loss': valid_loss,
+            'train_acc': train_acc,
+            'valid_acc': valid_acc,
+            'learning_rate': current_lr
         })
     return train_loss, valid_loss, train_acc, valid_acc
 
