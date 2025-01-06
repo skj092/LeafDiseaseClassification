@@ -6,7 +6,7 @@ from sklearn.model_selection import StratifiedKFold
 from torch.utils.data import DataLoader
 from modules import (setup_logger, seed_everything,
                      CassavaDataset, get_model, train_one_epoch,
-                     get_transform)
+                     get_transform, myModel)
 
 
 # Config Setup
@@ -16,6 +16,8 @@ multi_gpu = False
 wandb = True
 batch_size = 4
 num_epochs = 20
+arch_name = "vit_base_patch16_384"
+pretrained = True
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 path = Path("./data")
 
@@ -44,8 +46,11 @@ for fold, (train_index, valid_index) in enumerate(skf.split(df2020, df2020["labe
     train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
     valid_dl = DataLoader(valid_ds, batch_size=batch_size, shuffle=False)
 
-    # Load the model
-    model = get_model()
+    # resnet34
+    #model = get_model()
+
+    # vit model
+    model = myModel(arch_name, pretrained=True,img_size=384)
     if multi_gpu:
         model = torch.nn.DataParallel(model)
     model.to(device)

@@ -17,6 +17,7 @@ from albumentations import (
 import cv2
 from albumentations.pytorch import ToTensorV2
 from dotenv import load_dotenv
+import timm
 
 load_dotenv()
 
@@ -94,6 +95,27 @@ def get_model():
     model = models.resnet34(weights="ResNet34_Weights.DEFAULT")
     model.fc = nn.Linear(512, 5)
     return model
+
+
+class myModel(nn.Module):
+    def __init__(self,
+                 arch_name,
+                 pretrained=False,
+                 img_size=256,
+                 multi_drop_rate=0.5,
+                 ):
+        super().__init__()
+        self.model = timm.create_model(arch_name, pretrained=pretrained)
+        n_features = self.model.head.in_features
+        self.model.head = nn.Identity()
+        self.head = nn.Linear(n_features, 5)
+        self.head_drops = nn.ModuleList()
+        for i in range(5):
+            self.head_drops.append(nn.Dropout(multi_drop_rate))
+
+    def forward(self, x):
+        h = self.model(x)
+        return self.head(h)
 
 
 def train_one_epoch(model, train_dl, valid_dl, loss_fn, optim, scheduler, logger, run=None):
