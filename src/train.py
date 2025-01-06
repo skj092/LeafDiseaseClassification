@@ -19,13 +19,17 @@ seed_everything(42)
 use_external = False
 multi_gpu = False
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-path = Path("/home/sonujha/rnd/LeafDiseaseClassification/data/merged")
+local_path = Path("/home/sonujha/rnd/LeafDiseaseClassification/data/merged")
+studio_path = Path('/teamspace/studios/this_studio/LeafDiseaseClassification/data/')
+
+# lightning studio specific
+path = studio_path if studio_path.exists() else local_path
 df = pd.read_csv(path / "merged.csv")
 logger.info(f"shape of df: {df.shape}")
 
 
 df2020 = df[df["source"] == 2020]
-df2020 = df2020.sample(frac=0.05)
+# df2020 = df2020.sample(frac=0.05)
 skf = StratifiedKFold(
     n_splits=5, shuffle=True, random_state=42,
 )
@@ -40,8 +44,8 @@ for train_index, valid_index in skf.split(df2020, df2020["label"].values):
     valid_ds = CassavaDataset(
         valid_df, path / "train", transforms=get_transform(is_train=False))
 
-    train_dl = DataLoader(train_ds, batch_size=32, shuffle=True)
-    valid_dl = DataLoader(valid_ds, batch_size=32, shuffle=False)
+    train_dl = DataLoader(train_ds, batch_size=196, shuffle=True)
+    valid_dl = DataLoader(valid_ds, batch_size=196, shuffle=False)
 
     # Load the model
     model = get_model()
@@ -56,10 +60,10 @@ for train_index, valid_index in skf.split(df2020, df2020["label"].values):
     for epoch in range(10):
         logger.info(f"============Epoch: {epoch}/10 ============")
         train_loss, valid_loss, train_acc, valid_acc = train_one_epoch(
-            model, train_dl, valid_dl, loss_fn, optim
+            model, train_dl, valid_dl, loss_fn, optim, logger
         )
 
     # save the model
-    torch.save(model.state_dict(), "resnet18.pth")
+    torch.save(model.state_dict(), "model.pth")
     tok = time.time()
     logger.info(f"Total time take {tok-tik:.2f}s")

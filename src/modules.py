@@ -90,7 +90,7 @@ def get_model():
     return model
 
 
-def train_one_epoch(model, train_dl, valid_dl, loss_fn, optim):
+def train_one_epoch(model, train_dl, valid_dl, loss_fn, optim, logger):
     model.train()
     train_loss, train_acc = 0, 0
     loop = tqdm(train_dl)
