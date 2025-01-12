@@ -10,18 +10,18 @@ import numpy as np
 import random
 import logging
 import sys
+import os
 from albumentations import (
     Compose, Normalize, Resize, RandomResizedCrop, HorizontalFlip,
     VerticalFlip, ShiftScaleRotate, Transpose,
 )
 import cv2
 from albumentations.pytorch import ToTensorV2
-from dotenv import load_dotenv
-
-load_dotenv()
+from engine import Trainer
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 MEAN = [0.5, 0.5, 0.5]
 STD = [0.5, 0.5, 0.5]
 
@@ -94,53 +94,6 @@ def get_model():
     model = models.resnet34(weights="ResNet34_Weights.DEFAULT")
     model.fc = nn.Linear(512, 5)
     return model
-
-
-def train_one_epoch(model, train_dl, valid_dl, loss_fn, optim, scheduler, logger, run=None):
-    model.train()
-    train_loss, train_acc = 0, 0
-    loop = tqdm(train_dl)
-    for i, (xb, yb) in enumerate(loop):
-        xb = xb.to(device)
-        yb = yb.to(device)
-        optim.zero_grad()
-        logit = model(xb)
-        loss = loss_fn(logit, yb)
-        loss.backward()
-        train_loss += loss.item()
-        optim.step()
-        scheduler.step()
-        train_acc += (torch.argmax(logit, dim=1) == yb).float().mean().item()
-
-    # Evaluation on one epoch
-    model.eval()
-    valid_loss, valid_acc = 0, 0
-    loop = tqdm(valid_dl)
-    with torch.no_grad():
-        for i, (xb, yb) in enumerate(loop):
-            xb = xb.to(device)
-            yb = yb.to(device)
-            logit = model(xb)
-            valid_loss += loss_fn(logit, yb).item()
-            valid_acc += (torch.argmax(logit, dim=1)
-                          == yb).float().mean().item()
-    train_acc /= len(train_dl)
-    valid_acc /= len(valid_dl)
-    train_loss /= len(train_dl)
-    valid_loss /= len(valid_dl)
-    current_lr = optim.param_groups[0]['lr']
-    logger.info(f"train_loss: {train_loss:.3f}, valid_loss: {valid_loss:.3f}")
-    logger.info(f"train_acc: {train_acc:.2f}, valid_acc: {valid_acc:.2f}")
-    logger.info(f"current_lr: {current_lr:.6f}")
-    if run is not None:
-        run.log({
-            'train_loss': train_loss,
-            'valid_loss': valid_loss,
-            'train_acc': train_acc,
-            'valid_acc': valid_acc,
-            'learning_rate': current_lr
-        })
-    return train_loss, valid_loss, train_acc, valid_acc
 
 
 def get_transform(is_train=True):
